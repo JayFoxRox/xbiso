@@ -3,6 +3,10 @@
 #include <vector>
 #include <cstring>
 #include <iostream>
+#include <cstdio>
+#include <cinttypes>
+
+FILE* xdvdfs::mfile = NULL;
 
 // TODO: support for big endian architectures
 
@@ -11,7 +15,9 @@ void xdvdfs::VolumeDescriptor::readFromFile (std::ifstream& file)
     std::vector<char> buffer(2048);
 
     // read the whole sector
-    file.seekg(VOLUME_DESCRIPTOR_SECTOR*SECTOR_SIZE, file.beg);
+    uint64_t offset = VOLUME_DESCRIPTOR_SECTOR*SECTOR_SIZE + OFFSET;
+    fprintf(mfile, "%" PRIu64 " %" PRIu64 " volume_desc\n", offset, offset + 4096 - 1);
+    file.seekg(offset, file.beg);
     file.read(buffer.data(), buffer.size());
 
     // TODO: couldn't we use the stream operator instead?
@@ -47,12 +53,13 @@ xdvdfs::DirectoryEntry xdvdfs::VolumeDescriptor::getRootDirEntry (std::ifstream&
     return dirent;
 }
 
-void xdvdfs::DirectoryEntry::readFromFile (std::ifstream& file, std::streampos sector, std::streampos offset)
+void xdvdfs::DirectoryEntry::readFromFile (std::ifstream& file, std::streampos sector, std::streampos file_offset)
 {
     std::vector<char> buffer(2048);
 
     // read the whole sector
-    file.seekg(sector*xdvdfs::SECTOR_SIZE + offset, file.beg);
+    uint64_t offset = sector*xdvdfs::SECTOR_SIZE + file_offset + OFFSET;
+    file.seekg(offset, file.beg);
     file.read(buffer.data(), buffer.size());
 
     std::copy(buffer.begin(), buffer.begin()+0x02, reinterpret_cast<char*>(&this->leftSubTree));
@@ -64,6 +71,8 @@ void xdvdfs::DirectoryEntry::readFromFile (std::ifstream& file, std::streampos s
     // reading the filename requires a bit more work
     uint8_t* filenameLength = reinterpret_cast<uint8_t*>(&buffer[0x0D]);
     this->filename = std::string(&buffer[0x0E], *filenameLength);
+
+    fprintf(mfile, "%" PRIu64 " %" PRIu64 " dirent '%s'\n", offset, offset + buffer.size() - 1, this->filename.c_str());
 
     this->sectorNumber = sector;
 
@@ -92,7 +101,8 @@ void xdvdfs::DirectoryEntry::extractFile(std::ifstream& file, std::ofstream& ofi
     std::vector<char> buffer(4096);
     std::size_t filesize = this->fileSize;
 
-    file.seekg(xdvdfs::SECTOR_SIZE * this->startSector);
+    uint64_t offset = xdvdfs::SECTOR_SIZE * this->startSector + OFFSET;
+    file.seekg(offset, file.beg);
 
     while (filesize > 0)
     {
