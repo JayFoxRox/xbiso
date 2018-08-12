@@ -5,10 +5,14 @@
 
 namespace xdvdfs
 {
+    static const uint64_t OFFSET = 198144*2048;
+
     static const int SECTOR_SIZE = 2048;
     static const int VOLUME_DESCRIPTOR_SECTOR = 32;
 
     static const char MAGIC_NUMBER[] = "MICROSOFT*XBOX*MEDIA";
+
+    extern FILE* mfile;
 
     class Exception : public std::exception
     {
@@ -81,10 +85,11 @@ namespace xdvdfs
             static const uint8_t FILE_ARCHIVE   = 0x20;
             static const uint8_t FILE_NORMAL    = 0x80;
 
+            uint32_t startSector;
+
         private:
             uint16_t leftSubTree;
             uint16_t rightSubTree;
-            uint32_t startSector;
             uint32_t fileSize;
             uint8_t  attributes;
             std::string filename;

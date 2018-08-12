@@ -20,6 +20,8 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
+#include <cstdio>
+#include <cinttypes>
 #include "optionparser.h"
 #include <xbisoConfig.h>
 
@@ -93,6 +95,8 @@ void printUsage ()
 int main (int argc, char* argv[])
 {
     argc -= (argc>0); argv += (argc>0);
+
+    xdvdfs::mfile = fopen("meta.txt", "wb");
 
     option::Stats stats(usage, argc, argv);
     std::vector<option::Option> options(stats.options_max);
@@ -173,7 +177,8 @@ void handleDirectoryEntry (std::ifstream& file, xdvdfs::DirectoryEntry& dirent)
     }
     else
     {
-        std::cout << "extracting " << dirent.getFilename() << std::endl;
+        uint64_t offset = xdvdfs::SECTOR_SIZE * dirent.startSector + xdvdfs::OFFSET;
+        std::fprintf(xdvdfs::mfile, "%" PRIu64 " %" PRIu64 " file '%s'\n", offset, offset + dirent.getFileSize() - 1, dirent.getFilename().c_str());
 
         if (!dryRun)
         {
